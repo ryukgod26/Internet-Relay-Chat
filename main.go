@@ -2,10 +2,19 @@ package main
 
 import (
 	"fmt"
+	"learning_go/myutils"
 	"strings"
 )
 
+type Customer struct{
+	userTickets uint16
+	firstName string
+	lastName string
+	email string
+}
+
 func main() {
+	myutils.Test()
 	var totalTickets uint16
 	var userTickets uint16
 	var firstName string
@@ -13,13 +22,13 @@ func main() {
 	var email string
 	totalTickets = 20
 	flightName := "Flight"
-	var bookings = []string{"Armin", "Eren", "Mikasa"}
-	fmt.Printf("We have %d Tickets.\n", totalTickets)
-	fmt.Printf("Type:%T\n", totalTickets)
-	fmt.Printf("Flight Name is %s\n", flightName)
-	fmt.Println("Current Booking ", bookings, ".")
+	var bookings = make([]Customer,0)
+	
 	for {
-		
+		fmt.Printf("We have %d Tickets.\n", totalTickets)
+		fmt.Printf("Type:%T\n", totalTickets)
+		fmt.Printf("Flight Name is %s\n", flightName)
+		fmt.Println("Current Booking ", bookings, ".")
 		userTickets,firstName,lastName,email = getUserInput()
 		if !(len(firstName) >= 2) && !(len(lastName) >= 2) && !(strings.Contains(email, "@")) {
 			fmt.Println("First Name and Last Name Must Have More than 2 characters and Email Must be Valid.")
@@ -32,8 +41,24 @@ func main() {
 			fmt.Printf("We only have %d tickets left. You cannot Book %d Tickets.", totalTickets, userTickets)
 			continue
 		}
-		bookings = append(bookings, firstName+" "+lastName)
+		// bookings = append(bookings, firstName+" "+lastName)
 		totalTickets -= userTickets
+		var userData = Customer{
+			firstName: firstName,
+			lastName: lastName,
+			email: email,
+			userTickets: userTickets,
+		}
+
+
+		/*
+		var userData = make(map[string]string)
+		userData["firstName"] = firstName
+		userData["lastName"] = lastName
+		userData["email"] = email
+		userData["userTickets"] = strconv.FormatUint(uint64(userTickets),10)
+		*/
+		bookings = append(bookings, userData)
 
 		 firstNames := getFirstNames(bookings)
 			if totalTickets == 0 {
@@ -43,7 +68,7 @@ func main() {
 
 		fmt.Printf("Username: %s\n", firstName+" "+lastName)
 		fmt.Printf("User Tickets: %d\n", userTickets)
-					fmt.Println("Current Booking ", firstNames, ".")
+		fmt.Println("Current Booking ", firstNames, ".")
 
 	}
 }
@@ -68,13 +93,12 @@ func getUserInput() (uint16,string,string,string) {
 	return userTickets,firstName,lastName,email
 }
 
-func getFirstNames(bookings[] string) []string{
+func getFirstNames(bookings []Customer) []string{
 
 
 		firstNames := []string{}
 		for _, booking := range bookings {
-			names := strings.Fields(booking)
-			firstNames = append(firstNames, names[0])
+			firstNames = append(firstNames, booking.firstName)
 		}
 
 		return firstNames
