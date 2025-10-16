@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"learning_go/myutils"
 	"strings"
+	"sync"
 )
 
 type Customer struct{
@@ -12,6 +13,9 @@ type Customer struct{
 	lastName string
 	email string
 }
+
+
+var wg = sync.WaitGroup()
 
 func main() {
 	myutils.Test()
@@ -24,6 +28,8 @@ func main() {
 	flightName := "Flight"
 	var bookings = make([]Customer,0)
 	
+	wg.Add(1)
+	sendTicket(userTickets,firstName,lastName)
 	for {
 		fmt.Printf("We have %d Tickets.\n", totalTickets)
 		fmt.Printf("Type:%T\n", totalTickets)
@@ -71,6 +77,7 @@ func main() {
 		fmt.Println("Current Booking ", firstNames, ".")
 
 	}
+	wg.Wait()
 }
 
 func getUserInput() (uint16,string,string,string) {
@@ -102,4 +109,9 @@ func getFirstNames(bookings []Customer) []string{
 		}
 
 		return firstNames
+}
+
+func sendTicket(userTickents uint16,firstName string, lastname string){
+var message = fmt.Snprintf("Your %d tickets has been Booked Mr.or Mrs.%s %s",userTickets,firstName,lastName)
+fmt.Println("Information:",message)
 }
