@@ -5,6 +5,7 @@ import (
 	"learning_go/myutils"
 	"strings"
 	"sync"
+	"time"
 )
 
 type Customer struct{
@@ -15,7 +16,7 @@ type Customer struct{
 }
 
 
-var wg = sync.WaitGroup()
+var wg = sync.WaitGroup{}
 
 func main() {
 	myutils.Test()
@@ -28,8 +29,7 @@ func main() {
 	flightName := "Flight"
 	var bookings = make([]Customer,0)
 	
-	wg.Add(1)
-	sendTicket(userTickets,firstName,lastName)
+
 	for {
 		fmt.Printf("We have %d Tickets.\n", totalTickets)
 		fmt.Printf("Type:%T\n", totalTickets)
@@ -55,7 +55,8 @@ func main() {
 			email: email,
 			userTickets: userTickets,
 		}
-
+	wg.Add(1)
+	go sendTicket(userTickets,firstName,lastName)
 
 		/*
 		var userData = make(map[string]string)
@@ -111,7 +112,8 @@ func getFirstNames(bookings []Customer) []string{
 		return firstNames
 }
 
-func sendTicket(userTickents uint16,firstName string, lastname string){
-var message = fmt.Snprintf("Your %d tickets has been Booked Mr.or Mrs.%s %s",userTickets,firstName,lastName)
+func sendTicket(userTickets uint16,firstName string, lastName string){
+	time.Sleep(10*time.Second)
+var message = fmt.Sprintf("Your %d tickets has been Booked Mr.or Mrs.%s %s",userTickets,firstName,lastName)
 fmt.Println("Information:",message)
 }
