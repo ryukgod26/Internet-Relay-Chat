@@ -106,7 +106,7 @@ func (client *Client) Auth() {
 	}
 
 	if len(client.username) > 0 {
-		send_data(client.conn, fmt.Sprintf("USER %s 0 * :%s",client.username,client.username))
+		send_data(client.conn, fmt.Sprintf("USER %s 0 * :%s", client.username, client.username))
 	}
 
 	if len(client.nick) > 0 {
@@ -146,9 +146,27 @@ func (client *Client) GetData() MSG {
 }
 
 func (client *Client) Say(msg string) {
-	send_data(client.conn, fmt.Sprintf("PRIVMSG #%s : %s\n", client.server, msg))
+	if client.conn == nil {
+		fmt.Println("Connection got Disconnected Cannot Send Data")
+		return
+	}
+	send_data(client.conn, fmt.Sprintf("PRIVMSG #%s : %s\r\n", client.server, msg))
 }
 
+func (client *Client) SendRaw(line string) {
+	if client.conn == nil {
+		return
+	}
+	fmt.Println(">>>", line)
+	send_data(client.conn, line)
+}
+
+func (client *Client) SayToNick(nick string, msg string) {
+	if client.conn == nil {
+		return
+	}
+	client.SendRaw(fmt.Sprintf("PRIVMSG %s :%s", nick, msg))
+}
 
 func handle_error(err error) {
 	if err != nil {
