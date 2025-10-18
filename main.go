@@ -25,6 +25,9 @@ func main() {
 
 	c.Join("testchannel")
 	c.SayToNick(nick, "hello self test")
+	res,err := c.GetResponse()
+	fmt.Println("Response:",res)
+	irc.Handle_error(err)
 
 	go func() {
 		for {
@@ -32,7 +35,7 @@ func main() {
 			fmt.Println(test)
 		}
 	}()
-
+	
 	scanner := bufio.NewScanner(os.Stdin)
 	fmt.Println("Enter Your Message to send to irc server.")
 	for scanner.Scan() {
@@ -44,7 +47,11 @@ func main() {
 		if strings.TrimSpace(line) == "" {
 			continue
 		}
+		fmt.Println("Testing:",line)
 		c.Say(line)
+		res,err := c.GetResponse()
+		fmt.Println("Response:",res)
+		irc.Handle_error(err)
 	}
 
 	if err := scanner.Err(); err != nil {

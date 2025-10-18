@@ -83,7 +83,7 @@ func ParseMessage(msg string) MSG {
 
 func (client *Client) Connect() {
 	conn, err := net.Dial("tcp", fmt.Sprintf("%v:%v", client.address, client.port))
-	handle_error(err)
+	Handle_error(err)
 	client.conn = conn
 	client.Auth()
 }
@@ -135,18 +135,7 @@ func (client *Client) HandlePong(data string) {
 
 
 
-func (client *Client) GetData() MSG {
-	if client.disconnected {
-		return MSG{}
-	}
-	data, err := client.reader.ReadLine()
-	handle_error(err)
-	client.HandlePong(data)
-	fmt.Println(data)
-	msg := ParseMessage(data)
-	client.chat = msg
-	return msg
-}
+
 
 func (client *Client) Say(msg string) {
 	if client.conn == nil {
@@ -161,7 +150,7 @@ func (client *Client) SendRaw(line string) {
 	if client.conn == nil {
 		return
 	}
-	fmt.Println(">>>", line)
+	fmt.Println(">>.", line)
 	send_data(client.conn, line)
 }
 
@@ -172,8 +161,44 @@ func (client *Client) SayToNick(nick string, msg string) {
 	client.SendRaw(fmt.Sprintf("PRIVMSG %s :%s", nick, msg))
 }
 
-func handle_error(err error) {
+func Handle_error(err error) {
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+
+func (client *Client) GetResponse() (string, error) {
+    if client.disconnected {
+        return "", nil
+    }
+    if client.conn == nil {
+        return "", fmt.Errorf("not connected")
+    }
+
+    if client.reader == nil {
+        r := bufio.NewReader(client.conn)
+        client.reader = textproto.NewReader(r)
+    }
+
+    line, err := client.reader.ReadLine()
+    if err != nil {
+        return "", err
+    }
+
+	client.HandlePong(line)
+    return line, nil
+}
+
+func (client *Client) GetData() MSG {
+	if client.disconnected {
+		return MSG{}
+	}
+	data, err := client.reader.ReadLine()
+	Handle_error(err)
+	client.HandlePong(data)
+	fmt.Println(data)
+	msg := ParseMessage(data)
+	client.chat = msg
+	return msg
 }
