@@ -41,6 +41,7 @@ func (msg *MSG) IsPrivateMessage() bool {
 }
 
 func send_data(conn net.Conn, msg string) {
+	fmt.Println("Sending Your Message ",msg)
 	fmt.Fprintf(conn, "%s\r\n", msg)
 }
 
@@ -132,6 +133,8 @@ func (client *Client) HandlePong(data string) {
 	}
 }
 
+
+
 func (client *Client) GetData() MSG {
 	if client.disconnected {
 		return MSG{}
@@ -150,7 +153,8 @@ func (client *Client) Say(msg string) {
 		fmt.Println("Connection got Disconnected Cannot Send Data")
 		return
 	}
-	send_data(client.conn, fmt.Sprintf("PRIVMSG #%s : %s\r\n", client.server, msg))
+	fmt.Println("Sending Your Message ",msg)
+	send_data(client.conn, fmt.Sprintf("PRIVMSG #%s :%s\r\n", client.server, msg))
 }
 
 func (client *Client) SendRaw(line string) {

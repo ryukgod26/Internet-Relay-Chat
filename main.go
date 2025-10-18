@@ -28,7 +28,8 @@ func main() {
 
 	go func() {
 		for {
-			_ = c.GetData()
+			test := c.GetData()
+			fmt.Println(test)
 		}
 	}()
 
