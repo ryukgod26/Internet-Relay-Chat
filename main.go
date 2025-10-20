@@ -19,17 +19,17 @@ type Styles struct {
 }
 
 type model struct {
-	questions   []Question
+	index       int
 	width       int
 	height      int
-	index       int
-	answerField textinput.Model
+	questions   []Question
 	styles      *Styles
 }
 
 type Question struct {
 	question string
 	answer   string
+	input 	 Input
 }
 
 func DefaultStyles() *Styles {
@@ -38,7 +38,7 @@ func DefaultStyles() *Styles {
 
 	s.InputField = lipgloss.NewStyle().
 		BorderForeground(s.BorderColor).
-		BorderStyle(lipgloss.NormalBorder()).
+		BorderStyle(lipgloss.ASCIIBorder()).
 		Padding(1).
 		Width(80)
 
@@ -52,7 +52,7 @@ func New(questions []Question) *model {
 	answerField.Focus()
 	answerField.CharLimit = 512
 	answerField.Width = 60
-	return &model{questions: questions, answerField: answerField, styles: styles}
+	return &model{questions: questions, styles: styles}
 }
 
 func (m model) Init() tea.Cmd {
@@ -73,17 +73,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c":
 			return m, tea.Quit
 		case "enter":
-			if len(m.answerField.Value()) > 0{
-			m.Next()
-			current.answer = m.answerField.Value()
-			m.answerField.SetValue("")
-			return m, nil
-			}else{
-			return m,nil
+			if len(strings.TrimSpace(current.input.Value())) > 0 {
+				m.Next()
+				current.answer = strings.TrimSpace(current.input.Value())
+				log.Printf("Question: %s,Answer: %s", current.question, current.answer)
+				return m, current.input.Blur()
+			} else {
+				return m, nil
 			}
 		}
 	}
-	m.answerField, cmd = m.answerField.Update(msg)
+	current.input, cmd = current.input.Update(msg)
 	return m, cmd
 }
 
@@ -118,6 +118,20 @@ func NewQuestion(question string) Question {
 	return Question{question: question}
 }
 
+func NewShortQuestion(question string) Question{
+	q := NewQuestion(question)
+	field := NewShortAnswerField()
+	q.input = field
+	return q
+}
+
+func NewLongQuestion(question string) Question{
+	q := NewQuestion(question)
+	field := NewLongAnswerField()
+	q.input = field
+	return q
+}
+
 const (
 	domain = "irc.oftc.net"
 	port   = "6667"
@@ -128,12 +142,13 @@ const (
 func main() {
 
 	questions := []Question{
-		NewQuestion("What is Your Name?"),
-		NewQuestion("What is Your Username?"),
-		NewQuestion("What is Your Nickname?"),
-		NewQuestion("What is the Domain of the Server You Want to connect to?"),
-		NewQuestion("What is the Serevr Port?"),
-		NewQuestion("What is the Channnel name You wnat to enter?")}
+		NewShortQuestion("What is Your Name?"),
+		NewShortQuestion("What is Your Username?"),
+		NewShortQuestion("What is Your Nickname?"),
+		NewShortQuestion("What is the Domain of the Server You Want to connect to?"),
+		NewShortQuestion("What is the Serevr Port?"),
+		NewShortQuestion("What is the Channnel name You wnat to enter?")}
+		NewLongQuestion("Type the message you want to send?")
 
 	m := New(questions)
 
