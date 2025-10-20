@@ -88,6 +88,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
+	current := m.questions[m.index]
 	if m.width == 0 {
 		return "loading...."
 	}
@@ -99,7 +100,7 @@ func (m model) View() string {
 		lipgloss.JoinVertical(
 			lipgloss.Center,
 			m.questions[m.index].question,
-			m.styles.InputField.Render(m.answerField.View()),
+			m.styles.InputField.Render(current.input.View()),
 		),
 	)
 
