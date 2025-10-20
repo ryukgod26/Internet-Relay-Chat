@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"tui/tui"
 )
 
 type model struct{}
@@ -18,36 +19,15 @@ const (
 	nick   = "building101"
 )
 
-func (m model) Init() tea.Cmd{
-return nil
-}
-
-func (m model) Update(m tea.Msg) (tea.Model,tea.Cmd){
-switch msg := msg.(type) {
-
-case tea.KeyMsg:
-	switch msg.String(){
-		case "ctrl+c":
-			return m,tea.Quit
-	}
-	
-
-}
-return m,nil
-}
-
-func (m model) View() String{
-return "Testing"
-}
-
 func main() {
-	f,err := tea.LogToFile("debug.log","debug")
-	irc.Handle_Error(err)
+
+	f, err := tui.tea.LogToFile("debug.log", "debug")
+	tui.Handle_error(err)
 	defer f.Close()
 
-	p := tea.NewProgram(model{},tea.WithAltScreen())
-	if _,err := p.Run(); err != nil{
-	irc.Handle_Error(err)
+	p := tui.tea.NewProgram(model{}, tui.tea.WithAltScreen())
+	if _, err := p.Run(); err != nil {
+		tui.Handle_error(err)
 	}
 
 	client := irc.Init(domain, port, "1223", user, nick)
@@ -58,8 +38,8 @@ func main() {
 
 	c.Join("testchannel")
 	c.SayToNick(nick, "hello self test")
-	res,err := c.GetResponse()
-	fmt.Println("Response:",res)
+	res, err := c.GetResponse()
+	fmt.Println("Response:", res)
 	irc.Handle_error(err)
 
 	go func() {
@@ -68,7 +48,7 @@ func main() {
 			fmt.Println(test)
 		}
 	}()
-	
+
 	scanner := bufio.NewScanner(os.Stdin)
 	fmt.Println("Enter Your Message to send to irc server.")
 	for scanner.Scan() {
@@ -80,10 +60,10 @@ func main() {
 		if strings.TrimSpace(line) == "" {
 			continue
 		}
-		fmt.Println("Testing:",line)
+		fmt.Println("Testing:", line)
 		c.Say(line)
-		res,err := c.GetResponse()
-		fmt.Println("Response:",res)
+		res, err := c.GetResponse()
+		fmt.Println("Response:", res)
 		irc.Handle_error(err)
 	}
 
