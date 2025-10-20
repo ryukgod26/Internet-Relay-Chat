@@ -17,12 +17,13 @@ type Styles struct {
 }
 
 type model struct {
-	index     int
-	width     int
-	height    int
-	questions []Question
-	styles    *Styles
-	done      bool
+	index             int
+	width             int
+	height            int
+	questions         []Question
+	originalQuestions []Question
+	styles            *Styles
+	done              bool
 
 	ircIn    chan string
 	ircOut   chan string
@@ -56,7 +57,9 @@ func New(questions []Question, ircIn chan string, ircOut chan string, channel ch
 	// answerField.Focus()
 	// answerField.CharLimit = 512
 	// answerField.Width = 60
-	return &model{questions: questions, styles: styles, ircIn: ircIn, ircOut: ircOut, channel: channel}
+	orig := make([]Question, len(questions))
+	copy(orig, questions)
+	return &model{questions: questions, styles: styles, ircIn: ircIn, ircOut: ircOut, channel: channel,originalQuestions: orig}
 }
 
 func (m model) Init() tea.Cmd {
@@ -67,10 +70,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	current := &m.questions[m.index]
 
-	switch v := msg.(type){
+	switch v := msg.(type) {
 	case IrcMsg:
 		m.messages = append(m.messages, string(v))
-		return m,nil
+		return m, nil
 	}
 	switch msg := msg.(type) {
 
@@ -82,22 +85,42 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "ctrl+c":
 			return m, tea.Quit
+		case "ctrl+r":
+			m.questions = make([]Question, len(m.originalQuestions))
+            for i, oq := range m.originalQuestions {
+                var q Question
+                switch oq.input.(type) {
+                case *Shortta:
+                    q = NewShortQuestion(oq.question)
+                default:
+                    q = NewLongQuestion(oq.question)
+                }
+                q.answer = ""
+                m.questions[i] = q
+            }
+            m.index = 0
+            m.done = false
+            return m, nil
 		case "enter":
+			text := strings.TrimSpace(current.input.Value())
+			current.answer = text
+
+			if text == "" {
+				return m, nil
+			}
+
+			if m.ircOut != nil && m.channel != nil {
+				chName := <-m.channel
+				m.channel <- chName
+				m.ircOut <- fmt.Sprintf("PRIVMSG #%s :%s", chName, text)
+			}
+
+			m.questions = append(m.questions[:m.index], m.questions[m.index+1:]...)
 			if m.index == len(m.questions)-1 {
 				m.done = true
 			}
-			text := strings.TrimSpace(current.input.Value())
-			if text == ""{
-				return m,nil
-			}
-			if m.ircOut != nil{
-				m.ircOut <- fmt.Sprintf("PRIVMSG #%s :%s", m.channel, text)
-			}
-
-			m.Next()
-			current.answer = text
 			log.Printf("Question: %s,Answer: %s", current.question, current.answer)
-			return m, current.input.Blur
+			return m, nil
 		}
 	}
 	current.input, cmd = current.input.Update(msg)
@@ -108,10 +131,33 @@ func (m model) View() string {
 	if m.width == 0 {
 		return "loading...."
 	}
+
+	if m.done {
+		var out string
+		out += "Message has been sent\n\n"
+		for _, q := range m.questions {
+
+			out += fmt.Sprintf("%s: %s\n", q.question, q.answer)
+		}
+		out += "\nPress ctrl+c to exit.\nPress ctrl+r to Send Another Message."
+		return lipgloss.Place(
+			m.width,
+			m.height,
+			lipgloss.Center,
+			lipgloss.Center,
+			out,
+		)
+	}
+
+	if len(m.questions) == 0 {
+		m.done = true
+		return m.View()
+	}
+
 	current := m.questions[m.index]
 	start := 0
 	var msgLines string
-	if len(m.messages) > 10{
+	if len(m.messages) > 10 {
 		start = len(m.messages) - 10
 	}
 	// if m.done {
@@ -121,9 +167,9 @@ func (m model) View() string {
 	// 	}
 	// 	return output
 	// }
-	
-	for _,l := range m.messages[start:]{
-		msgLines += l+ "\n"
+
+	for _, l := range m.messages[start:] {
+		msgLines += l + "\n"
 	}
 
 	return lipgloss.Place(
@@ -144,7 +190,7 @@ func (m *model) Next() {
 	if m.index < len(m.questions)-1 {
 		m.index++
 	} else {
-		m.index = 0
+		m.done = true
 	}
 }
 
@@ -165,10 +211,3 @@ func NewLongQuestion(question string) Question {
 	q.input = field
 	return q
 }
-
-const (
-	domain = "irc.oftc.net"
-	port   = "6667"
-	user   = "building101"
-	nick   = "building101"
-)
