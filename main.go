@@ -19,12 +19,17 @@ type Styles struct {
 }
 
 type model struct {
-	questions   []string
+	questions   []Question
 	width       int
 	height      int
 	index       int
 	answerField textinput.Model
 	styles      *Styles
+}
+
+type Question struct {
+	question string
+	answer   string
 }
 
 func DefaultStyles() *Styles {
@@ -40,13 +45,13 @@ func DefaultStyles() *Styles {
 	return s
 }
 
-func New(questions []string) *model {
+func New(questions []Question) *model {
 	styles := DefaultStyles()
 	answerField := textinput.New()
 	answerField.Placeholder = "Enter Your Answer Here"
-	answerField.Focus()         // ensure placeholder / cursor appears
-	answerField.CharLimit = 512 // allow longer input
-	answerField.Width = 60      // ensure
+	answerField.Focus()
+	answerField.CharLimit = 512
+	answerField.Width = 60
 	return &model{questions: questions, answerField: answerField, styles: styles}
 }
 
@@ -55,6 +60,8 @@ func (m model) Init() tea.Cmd {
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+	current := &m.questions[m.index]
 	switch msg := msg.(type) {
 
 	case tea.WindowSizeMsg:
@@ -66,17 +73,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c":
 			return m, tea.Quit
 		case "enter":
-			if m.index < 5{
-			m.index ++
-			return m,nil
+			if len(m.answerField.Value()) > 0{
+			m.Next()
+			current.answer = m.answerField.Value()
+			m.answerField.SetValue("")
+			return m, nil
 			}else{
-			m.answerField.SetValue("Done!")
 			return m,nil
 			}
 		}
-
 	}
-	return m, nil
+	m.answerField, cmd = m.answerField.Update(msg)
+	return m, cmd
 }
 
 func (m model) View() string {
@@ -89,13 +97,25 @@ func (m model) View() string {
 		lipgloss.Center,
 		lipgloss.Center,
 		lipgloss.JoinVertical(
-		lipgloss.Center,
-		m.questions[m.index],
-		m.styles.InputField.Render(m.answerField.View()),
-	),
+			lipgloss.Center,
+			m.questions[m.index].question,
+			m.styles.InputField.Render(m.answerField.View()),
+		),
 	)
-	
-	
+
+}
+
+func (m *model) Next() {
+	if m.index < len(m.questions)-1 {
+		m.index++
+	} else {
+		m.index = 0
+	}
+
+}
+
+func NewQuestion(question string) Question {
+	return Question{question: question}
 }
 
 const (
@@ -107,13 +127,13 @@ const (
 
 func main() {
 
-	questions := []string{
-		"What is Your Name?",
-		"What is Your Username?",
-		"What is Your Nickname?",
-		"What is the Domain of the Server You Want to connect to?",
-		"What is the Serevr Port?",
-		"What is the Channnel name You wnat to enter?"}
+	questions := []Question{
+		NewQuestion("What is Your Name?"),
+		NewQuestion("What is Your Username?"),
+		NewQuestion("What is Your Nickname?"),
+		NewQuestion("What is the Domain of the Server You Want to connect to?"),
+		NewQuestion("What is the Serevr Port?"),
+		NewQuestion("What is the Channnel name You wnat to enter?")}
 
 	m := New(questions)
 
