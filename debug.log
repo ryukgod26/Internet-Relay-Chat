@@ -64,3 +64,9 @@ debug 2025/10/20 20:29:35 Question: What is the Domain of the Server You Want to
 debug 2025/10/20 20:29:37 Question: What is the Serevr Port?,Answer: 6667
 debug 2025/10/20 20:29:48 Question: What is the Channnel name You wnat to enter?,Answer: irc.libera.com
 debug 2025/10/20 20:29:50 Question: Type the message you want to send?,Answer: gd
+debug 2025/10/20 21:26:07 Question: What is Your Name?,Answer: Ryuk
+debug 2025/10/20 21:26:17 Question: What is Your Username?,Answer: ryukgod
+debug 2025/10/20 21:26:20 Question: What is Your Nickname?,Answer: nick
+debug 2025/10/20 21:26:28 Question: What is the Domain of the Server You Want to connect to?,Answer: irc.com
+debug 2025/10/20 21:26:31 Question: What is the Serevr Port?,Answer: 6667
+debug 2025/10/20 21:26:36 Question: What is the Channnel name You wnat to enter?,Answer: testChannel

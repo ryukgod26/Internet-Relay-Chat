@@ -1,37 +1,13 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"irc/irc"
-	"log"
-	"os"
-	"strings"
+	"time"
 
 	// "github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
-
-type Styles struct {
-	BorderColor lipgloss.Color
-	InputField  lipgloss.Style
-}
-
-type model struct {
-	index     int
-	width     int
-	height    int
-	questions []Question
-	styles    *Styles
-	done      bool
-}
-
-type Question struct {
-	question string
-	answer   string
-	input    Input
-}
 
 func main() {
 
@@ -45,16 +21,24 @@ func main() {
 		NewLongQuestion("Type the message you want to send?"),
 	}
 
-	m := New(questions)
+	ircIn := make(chan string, 64)
+	ircOut := make(chan string, 64)
+	channel := make(chan string, 64)
+	m := New(questions, ircIn, ircOut, channel)
 
 	f, err := tea.LogToFile("debug.log", "debug")
 	irc.Handle_error(err)
 	defer f.Close()
 
 	p := tea.NewProgram(m, tea.WithAltScreen())
-	if _, err := p.Run(); err != nil {
+	go func() {
+		_, err := p.Run()
 		irc.Handle_error(err)
-	}
+	}()
+
+	// if _, err := p.Run(); err != nil {
+	// 	irc.Handle_error(err)
+	// }
 
 	client := irc.Init(domain, port, "1223", user, nick)
 	c := &client
@@ -62,7 +46,7 @@ func main() {
 	c.Connect()
 	c.Disconnect()
 
-	c.Join("testchannel")
+	c.Join(<-m.channel)
 	c.SayToNick(nick, "hello self test")
 	res, err := c.GetResponse()
 	fmt.Println("Response:", res)
@@ -75,25 +59,45 @@ func main() {
 		}
 	}()
 
-	scanner := bufio.NewScanner(os.Stdin)
-	fmt.Println("Enter Your Message to send to irc server.")
-	for scanner.Scan() {
-		line := scanner.Text()
-		if strings.TrimSpace(line) == "/quit" {
-			fmt.Println("Exiting.")
-			os.Exit(0)
+	go func() {
+		for {
+			line, err := c.GetResponse()
+			irc.Handle_error(err)
+			ircIn <- line
+			p.Send(IrcMsg(line))
 		}
-		if strings.TrimSpace(line) == "" {
-			continue
-		}
-		fmt.Println("Testing:", line)
-		c.Say(line)
-		res, err := c.GetResponse()
-		fmt.Println("Response:", res)
-		irc.Handle_error(err)
-	}
+	}()
 
-	if err := scanner.Err(); err != nil {
-		log.Fatal(err)
+	go func() {
+		for out := range ircOut {
+			c.SendRaw(out)
+			p.Send(">>> " + out)
+
+		}
+	}()
+
+	for {
+		time.Sleep(time.Second)
 	}
+	// scanner := bufio.NewScanner(os.Stdin)
+	// fmt.Println("Enter Your Message to send to irc server.")
+	// for scanner.Scan() {
+	// 	line := scanner.Text()
+	// 	if strings.TrimSpace(line) == "/quit" {
+	// 		fmt.Println("Exiting.")
+	// 		os.Exit(0)
+	// 	}
+	// 	if strings.TrimSpace(line) == "" {
+	// 		continue
+	// 	}
+	// 	fmt.Println("Testing:", line)
+	// 	c.Say(line)
+	// 	res, err := c.GetResponse()
+	// 	fmt.Println("Response:", res)
+	// 	irc.Handle_error(err)
+	// }
+
+	// if err := scanner.Err(); err != nil {
+	// 	log.Fatal(err)
+	// }
 }
