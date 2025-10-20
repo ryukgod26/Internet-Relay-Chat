@@ -9,61 +9,69 @@ import (
 type Input interface {
 	Value() string
 	Blur() tea.Msg
-	Update(tea.Msg) (tea.Model, tea.Cmd)
+	Update(tea.Msg) (Input, tea.Cmd)
 	View() string
 }
 
-type ShortAnswerField struct {
+type Shortta struct {
 	textinput textinput.Model
 }
 
-type LongAnswerField struct {
+type Longta struct {
 	textarea textarea.Model
 }
 
-func (sa *ShortAnswerField) View() string {
+func (sa *Shortta) View() string {
 	return sa.textinput.View()
 }
 
-func (sa *ShortAnswerField) Update(msg tea.Msg) (tea.Model,tea.Cmd){
+func (sa *Shortta) Update(msg tea.Msg) (Input,tea.Cmd){
 	var cmd tea.Cmd
 	sa.textinput,cmd = sa.textinput.Update(msg)
 	return sa,cmd
 }
 
-func (sa *ShortAnswerField) Value() string {
+func (sa *Shortta) Value() string {
 	return sa.textinput.Value()
 }
 
-func (sa *ShortAnswerField) Blur() tea.Msg {
+func (sa *Shortta) Blur() tea.Msg {
 	return	sa.textinput.Blur
 }
 
-func NewShortAnswerField() *ShortAnswerField {
+func NewShortAnswerField() *Shortta {
 	ti := textinput.New()
-	return &ShortAnswerField{ti}
+	ti.Placeholder = "Enter Your Answer Here"
+	ti.Focus()
+	ti.CharLimit = 512
+	ti.Width = 60
+	return &Shortta{ti}
 }
 
-func (la *LongAnswerField) View() string {
+func (la *Longta) View() string {
 	return la.textarea.View()
 }
 
-func (la *LongAnswerField) Update(msg tea.Msg) (tea.Model,tea.Cmd) {
+func (la *Longta) Update(msg tea.Msg) (Input,tea.Cmd) {
 	var cmd tea.Cmd
 	la.textarea,cmd = la.textarea.Update(msg)
 	return la,cmd
 }
 
-func (la *LongAnswerField) Value() string {
+func (la *Longta) Value() string {
 	return la.textarea.Value()
 }
 
-func (la *LongAnswerField) Blur() tea.Msg {
-	return	la.textarea.Blur()
+func (la *Longta) Blur() tea.Msg {
+	return	la.textarea.Blur
 }
 
-func NewLongAnswerField() *LongAnswerField {
+func NewLongAnswerField() *Longta {
 	ta := textarea.New()
-	return &LongAnswerField{ta}
+	ta.Placeholder = "Enter Your Answer Here"
+	ta.Focus()
+	ta.CharLimit = 512
+
+	return &Longta{ta}
 }
 
