@@ -1,139 +1,66 @@
 # Internet-Relay-Chat
 
-Small test IRC client + TUI (Bubble Tea) project that demonstrates:
-- an `irc` package for connecting to IRC servers (connect / auth / join / send / read)
-- a Bubble Tea TUI for asking questions and sending messages
-- wiring between TUI and IRC via channels
+An experimental IRC client learning project. It includes a small IRC client implementation in `irc/irc.go` and a Bubble Tea TUI (`tui.go` / `wizard.go`) that asks a short series of questions (domain, port, nick, etc.) and then sends a message.
 
---- 
+This README explains how to run the project, how the TUI and IRC pieces interact, and common troubleshooting steps you can use while developing.
 
-## Repo layout (important files)
-- `main.go` — program entry, TUI + IRC orchestration (starts TUI and IRC goroutines).
-- `irc/irc.go` — IRC client library (Init, Connect, Auth, Join, Say, SendRaw, GetResponse).
-- `tui.go`, `wizard.go`, `main.go` (TUI parts) — Bubble Tea model, question/input components.
-- `go.mod` — module file (currently `module irc` in this repo).
+## Project layout
 
----
+- `main.go` — program entry. Runs the TUI to collect connection info, then starts the IRC client and prints incoming server messages.
+- `irc/irc.go` — small IRC client (Connect, Auth, Join, Say, SendRaw, GetResponse).
+- `tui.go`, `wizard.go` — Bubble Tea-based TUI and question helpers.
+- `go.mod` — module file (current module path: `irc`).
 
-## Quick start (Windows PowerShell)
+## Quick start (PowerShell)
 
-1. From project root:
-   - Initialize or fix module path (recommended to use a canonical path). Example:
-     ```powershell
-     # choose a module path (replace with your github path)
-     go mod edit -module=github.com/you/Internet-Relay-Chat
-     go mod tidy
-     ```
-     If you keep `module irc`, imports must use that prefix (e.g. `irc/irc`, `irc/tui`).
+1. From the project root:
 
-2. Build and run:
-   ```powershell
-   go mod tidy
-   go run .\main.go
-   # or build
-   go build -o ircclient .
-   .\ircclient.exe
-   ```
-
----
-
-## Configuration
-
-Edit `main.go` and set these constants (or replace with your preferred config handling):
-
-- `domain` — IRC server domain (e.g. `irc.libera.chat`, `irc.oftc.net`)
-- `port` — `6667` for plain TCP or `6697` for TLS (TLS requires using `tls.Dial`)
-- `user` — username (single token, not the whole USER line)
-- `nick` — desired nickname
-- `channel` — channel name (without `#`) used by the TUI
-
-Examples:
-```go
-const (
-    domain = "irc.oftc.net"
-    port   = "6667"
-    user   = "building101"
-    nick   = "building101"
-)
+```powershell
+go mod tidy
+go run .\main.go
 ```
 
----
+2. The TUI will ask questions in order. Fill them and press Enter. After the final question the program connects and sends the message.
 
-## How it works (integration notes)
+Notes:
+- Provide the server `domain` (example: `irc.oftc.net`), `port` (example: `6667`), `username`, `nickname`, `channel` (without `#`), and optionally a password.
+- If your module path is not `irc`, update `go.mod` and imports, or import local packages using the `irc/...` prefix as the project currently expects.
 
-- TUI runs with Bubble Tea. The program starts the TUI in a goroutine (or with `p.Start()`), then starts IRC goroutines.
-- Communication between TUI and IRC uses channels:
-  - `ircIn`  (chan string) — incoming raw server lines forwarded into the TUI.
-  - `ircOut` (chan string) — outgoing raw IRC commands produced by the TUI and consumed by an IRC writer goroutine.
+## How TUI and IRC are wired
 
-Design rules:
-- Only one goroutine should read from the TCP connection. Use a single reader goroutine that calls `GetResponse()` and forwards lines to TUI (`p.Send(...)`) and/or `ircIn`.
-- Use one writer goroutine that reads from `ircOut` and calls `SendRaw` / `Send_data`.
-- `Send_data` should append CRLF (`\r\n`) once; callers must NOT include CRLF.
+- The program runs the TUI (Bubble Tea) to collect answers. `main.go` then reads answers from the model and initializes the IRC client with `irc.Init(domain, port, password, username, nick)`.
+- The IRC connection is read by a single reader goroutine which calls `GetResponse()` and prints or forwards lines. Only one goroutine should read the TCP connection.
+- Outgoing commands should be sent through the IRC client's send helpers (`SendRaw`, `Say`) — those helpers add the required CRLF (`\r\n`).
 
----
+## Important protocol notes and common pitfalls
 
-## Important IRC protocol notes / common fixes
+- Always use CRLF (`\r\n`) for IRC messages. The library's `send_data` appends CRLF — callers must not add another CRLF.
+- Handshake sequence the server expects:
+  1. (optional) `PASS <password>`
+  2. `NICK <nick>`
+  3. `USER <username> 0 * :<realname>`
+- Respond to `PING` messages with `PONG <payload>`; the client includes a handler for that.
+- PRIVMSG syntax is `PRIVMSG <target> :<message>` (note the space before the colon). Incorrect syntax (e.g. `PRIVMSG #chan:msg`) will usually cause a `401 No such nick/channel` error.
 
-- Use CRLF for IRC lines: `"COMMAND args\r\n"`. Your send helper should append `\r\n`.
-- Registration handshake:
-  - PASS (optional) — `PASS <password>`
-  - NICK — `NICK <nick>`
-  - USER — `USER <username> 0 * :<realname>`
-- PING/PONG: respond to server PING lines with the same payload: `PONG <payload>` or `PONG :<payload>`.
-- PRIVMSG format: `PRIVMSG <target> :<message>`
-  - Example to channel: `PRIVMSG #testchannel :hello world`
-  - Wrong: `PRIVMSG #testchannel:hello` (colon in wrong place) — server will interpret as a nickname target.
-- If server says `No Ident response` or `Could not resolve your hostname` — informational; ident/ptr lookups are optional.
-- If server disconnects with `Registration timed out` — likely malformed handshake or CRLF missing.
+## Troubleshooting tips
 
----
+- If your client is disconnected with `Registration timed out`, check that you send the correct `USER` and `NICK` lines and include CRLFs.
+- If you see `No Ident response` or `Could not resolve your hostname` in server NOTICEs, those are informational (server tried an ident/PTR lookup). They don't usually prevent a working connection.
+- If PRIVMSG replies aren't showing: verify the raw outgoing line printed by the client (the code prints outgoing lines). Ensure it matches `PRIVMSG #channel :message`.
+- Avoid reading from the same `textproto.Reader` in multiple goroutines — it isn't concurrency-safe and can block or panic. Use one reader goroutine and forward received lines into the TUI or other channels.
 
-## TUI / Bubble Tea notes & common issues
+## Development notes & recommended fixes
 
-- Placeholder not shown / truncated:
-  - Ensure you construct and configure the textinput for each question (set `Placeholder`, `Focus()`, `Width`, `CharLimit`).
-  - Example: `ti := textinput.New(); ti.Placeholder = "Enter your answer"; ti.Focus(); ti.Width = 60`
-- Use pointer receivers on your Bubble Tea model methods (`*model`) so state (like input model) is preserved.
-- Forward key messages to the child text input component:
-  ```go
-  m.answerField, cmd = m.answerField.Update(msg)
-  ```
-- To change input style when empty (e.g., red border), modify the style in `View()` depending on `strings.TrimSpace(m.answerField.Value()) == ""`.
-- Do not call `GetResponse()` or `reader.ReadLine()` from multiple goroutines (textproto.Reader is not concurrency-safe).
+The repo is a work in progress. Here are recommended small fixes to stabilize behavior:
+
+- Fix message parsing in `irc.ParseMessage` (prefer `" :"` as the message delimiter and slice using `idx+2` / `idx+1`).
+- Ensure `send_data` is the single place CRLF is appended and remove extra `\r\n` strings from `NICK`/`PRIVMSG` calls.
+- Use pointer receivers for Bubble Tea model methods (`func (m *model) Update(...)`) so state persists.
+- Initialize text input components for each Question so placeholders show and input state is independent.
+- When restoring questions (e.g. on ctrl+r), recreate fresh input components instead of copying the old structs.
+
+If you'd like, I can apply any of these patches for you — tell me which one and I'll prepare the changes.
 
 ---
 
-## Debugging tips
-
-- Log outgoing raw IRC commands: print the raw line before sending (e.g. `fmt.Println(">>>", line)`).
-- Observe server replies in the TUI — forward every server line into the TUI with `p.Send(IrcMsg(line))`.
-- If PRIVMSG is ignored, check:
-  - Did Join succeed? Wait for `JOIN` confirmation before sending.
-  - Channel modes (e.g., +m) or ChanServ access lists may prevent you from sending; server returns numeric error codes (401/403/404).
-- If you see `No such nick/channel` it usually means the server thought the target was a nick (bad PRIVMSG syntax).
-
----
-
-## Tests & development workflow
-
-- Use `go vet` / `golangci-lint` for static checks.
-- Use `go test ./...` if you add tests.
-- Use `go mod tidy` after changing imports or module path.
-
----
-
-## Known TODO & suggestions
-
-- Move to TLS for networks requiring SSL (use `crypto/tls` and `tls.Dial`).
-- Implement SASL auth if the network requires it.
-- Improve message parsing: expose parsed msg struct with exported fields.
-- Add proper shutdown handling: close channels and goroutines gracefully on quit.
-- Consider splitting TUI and IRC into separate modules/packages if you want independent reuse.
-
----
-
-If you want, I can:
-- Create/replace this README in the repo (`d:\Internet_relay_chat\Internet-Relay-Chat\README.md`).
-- Patch `go.mod` to a canonical module path and update imports in `main.go`.
-- Produce a small example `config.go` to hold domain/port/user/nick constants.
+If anything here is out of date with your local code, tell me and I will update the README accordingly.
